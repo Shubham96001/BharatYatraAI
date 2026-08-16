@@ -16,23 +16,25 @@ from langchain_core.messages import (
 from langchain_groq import ChatGroq
 
 from tools.tavily_tool import tavily_search
-from tools.flight_tool import search_flights, search_flights_structured
 import time
 from dotenv import load_dotenv
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# LLM
+# LLM is optional at startup; the app must still work when the user has not
+# configured API keys yet.
 llm = ChatGroq(
-    model="llama-3.3-70b-versatile"
-)
+    model="llama-3.3-70b-versatile",
+    api_key=GROQ_API_KEY,
+) if GROQ_API_KEY else None
 
 # State
 class TravelState(TypedDict):
     messages: Annotated[list[AnyMessage], operator.add]
     user_query: str
-    flight_results: str
+    transport_results: str
     hotel_results: str
     itinerary: str
     final_response: str
@@ -62,6 +64,10 @@ def _run_tool(tool, query: str, unavailable_message: str) -> str:
 
 
 def _run_llm(messages: list[AnyMessage], fallback: str) -> AIMessage:
+    if llm is None:
+        print("GROQ_API_KEY missing; returning fallback response without LLM call.")
+        return AIMessage(content=fallback)
+
     start = time.time()
     try:
         response = llm.invoke(messages)
@@ -73,31 +79,24 @@ def _run_llm(messages: list[AnyMessage], fallback: str) -> AIMessage:
         print(f"LLM call failed after {dur:.2f}s: {exc}")
         return AIMessage(content=fallback)
 
-# Flight Agent
-def flight_agent(state: TravelState):
+# One Transit Agent
+# Helps users compare buses, trains, and flights for the source-to-destination route.
+def transport_agent(state: TravelState):
     query = state["user_query"]
-    # Use structured flight search so downstream agents can make semantic decisions.
-    try:
-        structured = search_flights_structured(query)
-    except Exception as exc:
-        print(f"structured flight search failed: {exc}")
-        structured = []
-
-    # Create a textual summary for display and for compatibility with existing agents
-    if structured:
-        summary_lines = []
-        for it in structured:
-            summary_lines.append(
-                f"Airline: {it.get('airline_name')} Departure: {it.get('departure_airport')} Arrival: {it.get('arrival_airport')} Status: {it.get('status')}"
-            )
-        flight_text = "\n".join(summary_lines)
-    else:
-        flight_text = "Flight search is temporarily unavailable. Plan airport transfers manually."
+    transit_query = (
+        f"Find practical bus, train, and flight timings, routes, and travel duration "
+        f"for the trip described below. Include departure, arrival, recommended mode, "
+        f"and transfer guidance: {query}"
+    )
+    transport_text = _run_tool(
+        tavily_search,
+        transit_query,
+        "Transport search is temporarily unavailable. Suggest likely bus, train, and flight options based on the route in the request.",
+    )
 
     return {
-        "flight_results": flight_text,
-        "flight_structured": structured,
-        "messages": [AIMessage(content="Flight agent completed")],
+        "transport_results": transport_text,
+        "messages": [AIMessage(content="One Transit Agent completed")],
         "llm_calls": state.get("llm_calls", 0),
     }
 
@@ -124,8 +123,8 @@ def itinerary_agent(state: TravelState):
     User Query:
     {state['user_query']}
 
-    Flight Results:
-    {state['flight_results']}
+    Transport Results:
+    {state['transport_results']}
 
     Hotel Results:
     {state['hotel_results']}
@@ -135,7 +134,8 @@ def itinerary_agent(state: TravelState):
         SystemMessage(content=(
             "You are the itinerary agent for Bharat Yatra. Create a practical "
             "day-by-day plan using only the supplied trip request and research. "
-            "Mark uncertain details clearly and do not invent live prices."
+            "Include a clear source-to-destination travel section covering buses, trains, "
+            "and flights where relevant, and mark uncertain timing details clearly."
         )),
         HumanMessage(content=prompt),
     ], "Itinerary generation is temporarily unavailable. Use the research above to plan each day manually.")
@@ -152,8 +152,8 @@ def final_agent(state: TravelState):
     final_prompt = f"""
     Generate final travel response.
 
-    Flights:
-    {state['flight_results']}
+    Transport Options:
+    {state['transport_results']}
 
     Hotels:
     {state['hotel_results']}
@@ -165,10 +165,11 @@ def final_agent(state: TravelState):
     response = _run_llm([
         SystemMessage(content=(
             "You are the final travel response agent. Return a polished, honest "
-            "trip plan with sections for overview, flights, hotels, itinerary, "
-            "budget notes, and practical tips. Preserve useful research details, "
-            "avoid claiming unavailable data is confirmed, and answer the user's "
-            "original request directly."
+            "trip plan with sections for overview, transport, hotels, itinerary, "
+            "budget notes, and practical tips. Highlight bus, train, and flight timing "
+            "options from source to destination, preserve useful research details, avoid "
+            "claiming unavailable data is confirmed, and answer the user's original "
+            "request directly."
         )),
         HumanMessage(content=final_prompt),
     ], "The final AI response is temporarily unavailable. Review the flight, hotel, and itinerary sections above.")
@@ -182,13 +183,13 @@ def final_agent(state: TravelState):
 
 graph = StateGraph(TravelState)
 
-graph.add_node("flight_agent", flight_agent)
+graph.add_node("transport_agent", transport_agent)
 graph.add_node("hotel_agent", hotel_agent)
 graph.add_node("itinerary_agent", itinerary_agent)
 graph.add_node("final_agent", final_agent)
 
-graph.add_edge(START, "flight_agent")
-graph.add_edge("flight_agent", "hotel_agent")
+graph.add_edge(START, "transport_agent")
+graph.add_edge("transport_agent", "hotel_agent")
 graph.add_edge("hotel_agent", "itinerary_agent")
 graph.add_edge("itinerary_agent", "final_agent")
 graph.add_edge("final_agent", END)
@@ -225,7 +226,7 @@ if __name__ == "__main__":
                 HumanMessage(content=user_input)
             ],
             "user_query": user_input,
-            "flight_results": "",
+            "transport_results": "",
             "hotel_results": "",
             "itinerary": "",
             "final_response": "",

@@ -295,7 +295,7 @@ a.card-link {
 
 /* ── Quick-fill buttons ── */
 div[data-testid="stButton"] > button {
-    background: linear-gradient(135deg, #FF9933 0%, #E8852A 100%) !important;
+    background: linear-gradient(135deg, #FF7A00 0%, #D95F00 100%) !important;
     color: #fff !important;
     border: none !important;
     border-radius: 12px !important;
@@ -304,16 +304,25 @@ div[data-testid="stButton"] > button {
     font-weight: 700 !important;
     font-family: 'DM Sans', sans-serif !important;
     letter-spacing: 0.02em !important;
-    box-shadow: 0 4px 18px rgba(255,153,51,0.25) !important;
+    box-shadow: 0 8px 22px rgba(217, 95, 0, 0.28) !important;
     transition: all 0.3s !important;
 }
 div[data-testid="stButton"] > button:hover {
     transform: translateY(-2px) !important;
-    box-shadow: 0 6px 28px rgba(255,153,51,0.35) !important;
-    background: linear-gradient(135deg, #FFA54C 0%, #E8852A 100%) !important;
+    box-shadow: 0 10px 30px rgba(217, 95, 0, 0.38) !important;
+    background: linear-gradient(135deg, #FF8A1E 0%, #D95F00 100%) !important;
 }
 div[data-testid="stButton"] > button:active {
     transform: translateY(0) !important;
+}
+
+/* Main submit button emphasis */
+button[kind="primary"],
+button[data-testid="baseButton-primary"] {
+    background: linear-gradient(135deg, #FF7A00 0%, #D95F00 100%) !important;
+    color: #fff !important;
+    border: none !important;
+    box-shadow: 0 8px 22px rgba(217, 95, 0, 0.28) !important;
 }
 
 /* Quick-fill chips row — smaller buttons */
@@ -356,12 +365,12 @@ input[type="text"], .stTextInput input {
     background: #FEFCF9 !important;
     border: 1.5px solid #EDE3D7 !important;
     border-radius: 10px !important;
-    color: #2D1B0E !important;
+    color: #b69d8b !important;
     font-family: 'DM Sans', sans-serif !important;
 }
 input[type="text"]:focus, .stTextInput input:focus {
     border-color: #E8A44C !important;
-    box-shadow: 0 0 0 3px rgba(232,164,76,0.12) !important;
+    box-shadow: 0 0 0 3px rgba(235, 175, 98, 0.12) !important;
 }
 input[type="text"]::placeholder { color: #B8A08A !important; }
 

@@ -1,11 +1,16 @@
 import os
+import io
+import textwrap
+import requests
 import streamlit as st
+import streamlit.components.v1 as components
 from datetime import datetime
 
 from langchain_core.messages import HumanMessage
 from main import app
 from image_utils import asset_src
 from state_detail import render_state_detail
+from states_data import INDIA_STATES
 
 st.set_page_config(
     page_title="Bharat Yatra AI — India Trip Planner",
@@ -42,11 +47,11 @@ with st.sidebar:
 
     st.markdown("<div class='sb-label'>🛠️ Powered By</div>", unsafe_allow_html=True)
     for t in ["🔗 LangGraph", "🧠 Groq · LLaMA 3.3 70B",
-              "🐘 PostgreSQL", "🔍 Tavily Search", "✈️ AviationStack"]:
+              "🐘 PostgreSQL", "🔍 Tavily Search"]:
         st.markdown(f"<div class='sb-chip'>{t}</div>", unsafe_allow_html=True)
 
     st.markdown("<div class='sb-label'>🤖 Agent Pipeline</div>", unsafe_allow_html=True)
-    for s in ["① Flight Agent — Routes & fares",
+    for s in ["① One Transit Agent — Bus, train & flight timings",
               "② Hotel Agent — Stays & ratings",
               "③ Itinerary Agent — Day plans",
               "④ Final Agent — Complete plan"]:
@@ -109,21 +114,21 @@ else:
     </div>""", unsafe_allow_html=True)
 
     DESTINATIONS = [
-        ("Kashmir",     "Heaven on Earth",    "https://images.unsplash.com/photo-1597074866923-dc0589150458?w=400&q=75"),
-        ("Rajasthan",   "Royal Desert",       "https://images.unsplash.com/photo-1599661046289-e31897846e41?w=400&q=75"),
-        ("Kerala",      "God's Own Country",  "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=400&q=75"),
-        ("Goa",         "Beach Paradise",     "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=400&q=75"),
-        ("Ladakh",      "Land of Passes",     "https://images.unsplash.com/photo-1626015365107-84e7e4e1f244?w=400&q=75"),
-        ("Varanasi",    "Spiritual Capital",  "https://images.unsplash.com/photo-1561361513-2d000a50f0dc?w=400&q=75"),
-        ("Himachal",    "Mountain Magic",     "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=400&q=75"),
-        ("Tamil Nadu",  "Temple Trail",       "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=400&q=75"),
-        ("North East",  "Seven Sisters",      "https://images.unsplash.com/photo-1622308644420-2275cf5b8e21?w=400&q=75"),
-        ("Andaman",     "Island Paradise",    "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&q=75"),
-        ("Gujarat",     "Land of Legends",    "https://images.unsplash.com/photo-1609948543911-7f9c5f937180?w=400&q=75"),
-        ("Karnataka",   "Many Worlds",        "https://images.unsplash.com/photo-1600100397608-e4e0cfddee25?w=400&q=75"),
-        ("Uttarakhand", "Land of the Gods",   "https://images.unsplash.com/photo-1606210122158-eeb10e0a3101?w=400&q=75"),
-        ("Punjab",      "Five Rivers",        "https://images.unsplash.com/photo-1609947017136-9dab4b23bcb1?w=400&q=75"),
-        ("Odisha",      "Soul of India",      "https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?w=400&q=75"),
+        ("Kashmir",     "Heaven on Earth",    "Kashmir_1.jpg"),
+        ("Rajasthan",   "Royal Desert",       "Rajasthan_1.jpg"),
+        ("Kerala",      "God's Own Country",  "Kerala_1.jpg"),
+        ("Goa",         "Beach Paradise",     "Goa_1.jpg"),
+        ("Ladakh",      "Land of Passes",     "Ladakh_1.jpg"),
+        ("Varanasi",    "Spiritual Capital",  "Varanasi_1.jpg"),
+        ("Himachal",    "Mountain Magic",     "Himachal_1.jpg"),
+        ("Tamil Nadu",  "Temple Trail",       "Tamil Nadu_1.jpg"),
+        ("North East",  "Seven Sisters",      "North-East_1.jpg"),
+        ("Andaman",     "Island Paradise",    "Andaman_1.jpg"),
+        ("Gujarat",     "Land of Legends",    "Gujarat_1.jpg"),
+        ("Karnataka",   "Many Worlds",        "Karnataka_1.jpg"),
+        ("Uttarakhand", "Land of the Gods",   "Uttarakhand_1.jpg"),
+        ("Punjab",      "Five Rivers",        "Punjab_1.jpg"),
+        ("Odisha",      "Soul of India",      "Odisha_1.jpg")
     ]
 
     html = '<div class="dest-grid">'
@@ -200,13 +205,108 @@ else:
     st.markdown('<div class="tricolor"></div>', unsafe_allow_html=True)
 
 
+def _resolve_destination_image(user_query: str):
+    query = user_query.lower()
+    for name, data in INDIA_STATES.items():
+        if name.lower() in query or data.get("full_name", "").lower() in query:
+            images = data.get("images", [])
+            if images:
+                return name, images[0]
+    return None, None
+
+
+def create_travel_plan_pdf(user_query: str, collected: dict, thread_id: str):
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.utils import ImageReader
+        from reportlab.pdfgen import canvas
+    except ImportError as exc:
+        raise RuntimeError("reportlab is required for PDF export. Install it with: pip install reportlab") from exc
+
+    destination_name, image_url = _resolve_destination_image(user_query)
+    buffer = io.BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+
+    pdf.setTitle("Bharat Yatra Travel Plan")
+    pdf.setAuthor("Bharat Yatra AI")
+    pdf.setFont("Helvetica-Bold", 20)
+    pdf.drawString(50, height - 50, "Bharat Yatra — Travel Plan")
+
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(50, height - 75, f"Query: {user_query[:120]}{'...' if len(user_query) > 120 else ''}")
+    pdf.drawString(50, height - 90, f"Destination: {destination_name or 'Not identified'}")
+    pdf.drawString(50, height - 105, f"User ID: {thread_id}")
+
+    if image_url:
+        try:
+            response = requests.get(image_url, timeout=15)
+            response.raise_for_status()
+            pdf.drawImage(ImageReader(io.BytesIO(response.content)), 420, height - 255, width=120, height=90, preserveAspectRatio=True)
+        except Exception:
+            pass
+
+    sections = [
+        ("Transport", collected.get("transport_results") or "N/A"),
+        ("Hotels", collected.get("hotel_results") or "N/A"),
+        ("Itinerary", collected.get("itinerary") or "N/A"),
+        ("Final Travel Plan", collected.get("final_response") or "N/A"),
+    ]
+
+    y = height - 160
+    for title, content in sections:
+        if y < 120:
+            pdf.showPage()
+            y = height - 60
+
+        pdf.setFont("Helvetica-Bold", 12)
+        pdf.drawString(50, y, title)
+        y -= 18
+        pdf.setFont("Helvetica", 9)
+        lines = textwrap.wrap(content.replace("\r", ""), width=100)
+        for line in lines[:18]:
+            pdf.drawString(60, y, line[:100])
+            y -= 12
+        y -= 18
+
+    pdf.save()
+    return buffer.getvalue()
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  INPUT
 # ══════════════════════════════════════════════════════════════════════════════
-st.markdown("""<div class="input-wrap">
+st.markdown(
+    """<div class="input-wrap">
     <div class="input-title">🗺️ Describe Your Indian Adventure</div>
     <div class="input-sub">Tell us where you want to go, how long, your budget, and what experiences you're looking for.</div>
-</div>""", unsafe_allow_html=True)
+</div>""",
+    unsafe_allow_html=True,
+)
+
+# Custom CSS to invert Quick-Fill button colors
+st.markdown(
+    """
+<style>
+/* Style quick-fill buttons with inverse color scheme */
+div[data-testid="column"] button {
+    background-color: #1E293B !important;
+    color: #FFFFFF !important;
+    border: 1px solid #475569 !important;
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+div[data-testid="column"] button:hover {
+    background-color: #0F172A !important;
+    color: #38BDF8 !important;
+    border-color: #38BDF8 !important;
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
 
 QUICK = [
     "7-day Rajasthan royal tour under ₹1.5L",
@@ -219,49 +319,64 @@ QUICK = [
     "Weekend trek near Delhi",
 ]
 
+# Initialize session state for prefilled text if not set
+if "quick_fill_input" not in st.session_state:
+    st.session_state["quick_fill_input"] = ""
+
+
+# Callback function to handle button click directly in session state
+def set_quick_fill(text):
+    st.session_state["quick_fill_input"] = text
+
+
 # Quick-fill chips — 4 columns
 st.markdown('<div class="qf-row">', unsafe_allow_html=True)
 qcols = st.columns(4)
-quick_fill = ""
 for i, label in enumerate(QUICK):
     with qcols[i % 4]:
-        if st.button(label, key=f"q_{label}"):
-            quick_fill = label
-st.markdown('</div>', unsafe_allow_html=True)
+        st.button(
+            label,
+            key=f"q_{label}",
+            on_click=set_quick_fill,
+            args=(label,),
+            use_container_width=True,
+        )
+st.markdown("</div>", unsafe_allow_html=True)
 
-# Handle prefill from state_detail (persist in session state; do not pop)
-if "quick_fill_input" in st.session_state and st.session_state.get("quick_fill_input"):
-    initial_val = st.session_state.get("quick_fill_input")
-else:
-    initial_val = quick_fill
-
-user_query = st.text_area(
-    "Your trip details",
-    value=initial_val,
-    placeholder="e.g. Plan a 7-day Rajasthan heritage trip covering Jaipur, Jodhpur, "
-                "Udaipur with palace stays under ₹1.5 lakhs including flights from Mumbai",
-    height=110,
-    label_visibility="collapsed",
-)
-
-# If requested, scroll/focus the planner textarea so the user sees the prefilled text.
-if st.session_state.get("scroll_to_planner"):
-    # Focus the first textarea on the page and scroll into view.
-    st.markdown(
-        "<script>const t=document.querySelector('textarea'); if(t){t.focus(); t.scrollIntoView({behavior:'smooth', block:'center'});} </script>",
-        unsafe_allow_html=True,
+with st.form("travel_form", clear_on_submit=False):
+    user_query = st.text_area(
+        "Your trip details",
+        value=st.session_state.get("quick_fill_input", ""),
+        placeholder="e.g. Plan a 7-day Rajasthan heritage trip covering Jaipur, Jodhpur...",
+        height=110,
+        label_visibility="collapsed",
     )
-    # reset the flag
+
+    generate = st.form_submit_button(
+        "🪷  Plan My Bharat Yatra", use_container_width=True
+    )
+
+# Execute JavaScript using components.html for smooth scrolling/focusing
+if st.session_state.get("scroll_to_planner"):
+    components.html(
+        """
+        <script>
+            const textarea = window.parent.document.querySelector('textarea');
+            if (textarea) {
+                textarea.focus();
+                textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        </script>
+        """,
+        height=0,
+    )
     st.session_state["scroll_to_planner"] = False
-
-generate = st.button("🪷  Plan My Bharat Yatra", use_container_width=True)
-
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  AGENT PIPELINE  (functionality unchanged)
 # ══════════════════════════════════════════════════════════════════════════════
 AGENT_META = {
-    "flight_agent":    ("✈️", "Flight Agent"),
+    "transport_agent": ("🚆", "One Transit Agent"),
     "hotel_agent":     ("🏨", "Hotel Agent"),
     "itinerary_agent": ("🗓️", "Itinerary Agent"),
     "final_agent":     ("🧠", "Final Agent"),
@@ -273,7 +388,7 @@ if generate:
     else:
         config = {"configurable": {"thread_id": thread_id}}
         collected = {
-            "flight_results": "", "hotel_results": "",
+            "transport_results": "", "hotel_results": "",
             "itinerary": "", "final_response": "", "llm_calls": 0,
         }
 
@@ -287,7 +402,7 @@ if generate:
             {
                 "messages": [HumanMessage(content=user_query)],
                 "user_query": user_query,
-                "flight_results": "",
+                "transport_results": "",
                 "hotel_results": "",
                 "itinerary": "",
                 "final_response": "",
@@ -300,10 +415,10 @@ if generate:
                 icon, label = AGENT_META.get(node_name, ("🔧", node_name))
 
                 with st.status(f"{icon}  {label}", state="complete", expanded=True):
-                    if node_name == "flight_agent":
-                        text = state_update.get("flight_results", "")
-                        collected["flight_results"] = text
-                        st.markdown(text or "_No flight data returned._")
+                    if node_name == "transport_agent":
+                        text = state_update.get("transport_results", "")
+                        collected["transport_results"] = text
+                        st.markdown(text or "_No transport data returned._")
 
                     elif node_name == "hotel_agent":
                         text = state_update.get("hotel_results", "")
@@ -352,51 +467,32 @@ if generate:
                 f"<div class='final-card'>{collected['final_response']}</div>",
                 unsafe_allow_html=True)
 
-        # ── Save ──
+        # ── Save PDF plan with destination image ──
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"travel_plan_{timestamp}.md"
+        filename = f"travel_plan_{timestamp}.pdf"
         save_dir = os.path.join(os.path.dirname(__file__), "travel_plans")
         os.makedirs(save_dir, exist_ok=True)
 
-        file_content = f"""# Bharat Yatra — Travel Plan
-**Query:** {user_query}
-**Generated:** {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-**User ID:** {thread_id}
-
----
-
-## ✈️ Flight Information
-{collected['flight_results'] or 'N/A'}
-
----
-
-## 🏨 Hotel Information
-{collected['hotel_results'] or 'N/A'}
-
----
-
-## 🗓️ Itinerary
-{collected['itinerary'] or 'N/A'}
-
----
-
-## 🧠 Final Travel Plan
-{collected['final_response'] or 'N/A'}
-
----
-*LLM Calls: {collected['llm_calls']}*
-"""
-        with open(os.path.join(save_dir, filename), "w", encoding="utf-8") as f:
-            f.write(file_content)
+        try:
+            pdf_bytes = create_travel_plan_pdf(user_query, collected, thread_id)
+            pdf_path = os.path.join(save_dir, filename)
+            with open(pdf_path, "wb") as f:
+                f.write(pdf_bytes)
+            download_data = pdf_bytes
+            download_mime = "application/pdf"
+            save_message = f"<div class='save-bar'>📁 Saved to <code>travel_plans/{filename}</code></div>"
+        except Exception as exc:
+            st.warning(f"PDF export failed: {exc}")
+            file_content = f"# Bharat Yatra — Travel Plan\n**Query:** {user_query}\n**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n**User ID:** {thread_id}\n\n---\n\n## 🚆 Transport\n{collected['transport_results'] or 'N/A'}\n\n---\n\n## 🏨 Hotel Information\n{collected['hotel_results'] or 'N/A'}\n\n---\n\n## 🗓️ Itinerary\n{collected['itinerary'] or 'N/A'}\n\n---\n\n## 🧠 Final Travel Plan\n{collected['final_response'] or 'N/A'}\n"
+            download_data = file_content.encode("utf-8")
+            download_mime = "text/plain"
+            save_message = "<div class='save-bar'>⚠️ PDF export unavailable; saved a text fallback.</div>"
 
         dl_col, info_col = st.columns([1, 3])
         with dl_col:
             st.download_button(
-                "⬇️ Download Plan", data=file_content,
-                file_name=filename, mime="text/markdown",
+                "⬇️ Download Plan", data=download_data,
+                file_name=filename, mime=download_mime,
                 use_container_width=True)
         with info_col:
-            st.markdown(
-                f"<div class='save-bar'>📁 Saved to "
-                f"<code>travel_plans/{filename}</code></div>",
-                unsafe_allow_html=True)
+            st.markdown(save_message, unsafe_allow_html=True)
