@@ -1,5 +1,6 @@
 psycopg[binary]
 langgraph>=0.2.12
+langgraph-checkpoint-postgres
 langchain-core>=0.3.0
 langchain-groq
 streamlit
