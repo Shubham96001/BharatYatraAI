@@ -8,3 +8,4 @@ requests
 tavily-python
 python-dotenv
 pillow
+reportlab
