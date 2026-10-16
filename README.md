@@ -1,92 +1,107 @@
+<div align="center">
+
 # Bharat Yatra AI
+**An AI-powered India travel planner built with Streamlit and LangGraph.**
 
-Bharat Yatra AI is an AI-powered India travel planner built with Streamlit and LangGraph. It helps users compare routes, understand bus/train/flight timing from source to destination, and generate a polished trip plan with destination imagery.
+<br>
 
-## Project Overview
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)
+![LangChain](https://img.shields.io/badge/LangChain-121212?style=for-the-badge&logo=chainlink&logoColor=white)
+![Groq](https://img.shields.io/badge/Groq-F55036?style=for-the-badge&logo=groq&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
 
-This project combines:
+</div>
 
-- Streamlit frontend for the user experience
-- LangGraph workflow for multi-agent orchestration
-- Groq LLM integration for planning and summarization
-- Tavily search for transport, hotel, and route research
-- Destination metadata with curated image lookup
-- Optional PostgreSQL checkpointer for persistence
+---
 
-The app is designed around a four-step agent pipeline:
+## 📖 Project Overview
 
-1. One Transit Agent
-2. Hotel Agent
-3. Itinerary Agent
-4. Final Response Agent
+Bharat Yatra AI helps users compare routes, understand bus/train/flight timings from source to destination, and generate a polished trip plan complete with destination imagery.
 
-The system accepts a travel request such as a source city, destination, duration, budget, or route, and returns a practical plan that explains bus, train, and flight timing options from source to destination.
+This project combines a responsive UI with a powerful multi-agent AI backend. It utilizes a **four-step agent pipeline**:
+1. 🚌 **Transit Agent:** Evaluates and compares transportation modes.
+2. 🏨 **Hotel Agent:** Researches accommodation options based on the query.
+3. 🗺️ **Itinerary Agent:** Structures the day-by-day travel plan.
+4. 📝 **Final Response Agent:** Compiles the data into a polished, final output.
 
-## Tech Stack
+The system accepts natural language travel requests (e.g., source city, destination, duration, budget, or route) and returns a practical plan that explains bus, train, and flight timing options, ultimately exporting a formatted PDF.
 
-- Python
-- Streamlit
-- LangGraph
-- LangChain
-- Groq
-- Tavily
-- ReportLab (for PDF export)
-- PostgreSQL (optional)
+### ✨ Core Capabilities
+- **Streamlit frontend** for an intuitive user experience.
+- **LangGraph workflow** for advanced multi-agent orchestration.
+- **Groq LLM integration** for rapid planning and summarization.
+- **Tavily search** for live transport, hotel, and route research.
+- **Destination metadata** with curated image lookup capabilities.
+- **Optional PostgreSQL checkpointer** for conversational memory and persistence.
 
-## Project Structure
+---
 
-- `main.py` – LangGraph agent workflow and application logic
-- `frontend.py` – Streamlit UI, route intelligence, and PDF export
-- `state_detail.py` – state-specific detail screen logic
-- `states_data.py` – state and destination metadata with images
-- `image_utils.py` – asset handling for images
-- `style.css` – custom styling for the UI
-- `tools/tavily_tool.py` – search-based transport and hotel research
-- `travel_plans/` – generated travel plans saved as PDF files
-- `.env` – local environment variables for API keys
+## 🛠️ Tech Stack
+*   **Language:** Python
+*   **UI Framework:** Streamlit
+*   **AI/Orchestration:** LangGraph, LangChain, Groq LLM
+*   **Search Engine:** Tavily
+*   **PDF Generation:** ReportLab
+*   **Database:** PostgreSQL (optional for persistent state)
 
-## Prerequisites
+---
+
+## 📂 Project Structure
+
+```text
+📦 BharatYatraAI
+ ┣ 📂 tools/
+ ┃ ┗ 📜 tavily_tool.py    # Search-based transport and hotel research
+ ┣ 📂 travel_plans/       # Generated travel plans saved as PDF files
+ ┣ 📂 assets/             # Destination images and static assets[cite: 3]
+ ┣ 📂 utils/              # Utility functions and helpers[cite: 3]
+ ┣ 📜 main.py             # LangGraph agent workflow and core logic
+ ┣ 📜 frontend.py         # Streamlit UI, route intelligence, and PDF export
+ ┣ 📜 state_detail.py     # State-specific detail screen logic
+ ┣ 📜 states_data.py      # State and destination metadata with images
+ ┣ 📜 image_utils.py      # Asset handling for images
+ ┣ 📜 style.css           # Custom styling for the UI
+ ┣ 📜 requirements.txt    # Python dependencies list[cite: 3]
+ ┣ 📜 LICENSE             # MIT License[cite: 3]
+ ┗ 📜 .env                # Local environment variables for API keys
+
+```
+## 🚀 Setup Instructions
+
+### Prerequisites
 
 Make sure you have:
 
-- Python 3.10+
-- A virtual environment or project venv
-- Access to the following services:
-  - Groq API key
-  - Tavily API key
-- Optional: PostgreSQL for persistent conversation checkpoints
+* **Python 3.10+**
+* A virtual environment (recommended)
+* Access to the following services:
+* [Groq API key](https://console.groq.com/)
+* [Tavily API key](https://tavily.com/)
 
-## Setup Instructions
 
-### 1. Open a terminal in the project folder
+* *Optional:* PostgreSQL server for persistent conversation checkpoints.
 
-```bash
-cd d:\BharatYatraAI\BharatYatraAI
-```
+### 1️⃣ Installation
 
-### 2. Activate the virtual environment
+Open a terminal in your project folder (e.g., `cd d:\BharatYatraAI\BharatYatraAI`) and activate your virtual environment:
 
-On Windows PowerShell:
+**On Windows PowerShell:**
 
 ```powershell
 .\langgraph_env\Scripts\Activate.ps1
+
 ```
 
-### 3. Install dependencies
+**Install dependencies:**
+Run the following command to install the required packages (or use `pip install -r requirements.txt` if available):
 
-If required packages are not installed yet, run:
-
-```powershell
+```bash
 pip install streamlit langgraph langchain-core langchain-groq tavily-python python-dotenv psycopg requests reportlab
+
 ```
 
-If the project already has a requirements file in the future, you can instead use:
-
-```powershell
-pip install -r requirements.txt
-```
-
-### 4. Create a .env file
+### 2️⃣ Environment Variables (`.env`)
 
 Create a file named `.env` in the project root with the following variables:
 
@@ -94,93 +109,102 @@ Create a file named `.env` in the project root with the following variables:
 GROQ_API_KEY=your_groq_api_key
 TAVILY_API_KEY=your_tavily_api_key
 DATABASE_URL=postgresql://username:password@host:port/database
+
 ```
 
-Notes:
+* **Note:** `GROQ_API_KEY` and `TAVILY_API_KEY` are strictly required.
+* **Note:** `DATABASE_URL` is optional. If it is not set, the app gracefully falls back to using an in-memory storage checkpointer.
 
-- `GROQ_API_KEY` is required by the LLM agent.
-- `TAVILY_API_KEY` is required for transport, hotel, and route research.
-- `DATABASE_URL` is optional. If it is not set, the app uses in-memory storage.
+---
 
-## Run the Application
+## 💻 Run the Application
 
-### Option 1: Launch the Streamlit app
+You can launch Bharat Yatra AI in two ways depending on your needs:
 
-```powershell
+**Option 1: Launch the Streamlit Web App (Recommended)**
+This starts the full web-based user interface.
+
+```bash
 streamlit run frontend.py
+
 ```
 
-This starts the full web-based UI.
+**Option 2: Run the CLI Logic**
+This runs the core travel planner logic in a terminal prompt-based flow without the GUI.
 
-### Option 2: Run the LangGraph logic directly in CLI mode
-
-```powershell
+```bash
 python main.py
+
 ```
 
-This runs the core travel planner logic in a terminal prompt-based flow.
+---
 
-## How to Use
+## 🧭 How to Use
 
-1. Open the Streamlit app in your browser.
-2. Enter your trip request, such as:
-   - "From Delhi to Jaipur by train and flight options for 3 days"
-   - "Mumbai to Kerala with bus and train timings under ₹10,000"
-   - "Bengaluru to Goa route and travel timing comparison"
+1. Open the Streamlit app in your web browser.
+2. Enter your trip request in natural language. Examples:
+* *"From Delhi to Jaipur by train and flight options for 3 days"*
+* *"Mumbai to Kerala with bus and train timings under ₹10,000"*
+* *"Bengaluru to Goa route and travel timing comparison"*
+
+
 3. Click the planning button.
-4. The app runs the agents and generates a complete travel itinerary with transport timing guidance.
-5. The final output is downloaded as a PDF plan with the matching destination image in the `travel_plans/` folder.
+4. The application orchestrates the agents and generates a complete travel itinerary with transport timing guidance.
+5. The final output is available for download as a PDF plan (including a matching destination image) saved in the `travel_plans/` folder.
 
-## Output Files
+### 📄 Output Files
 
-Generated travel plans are saved in:
+Generated travel plans are automatically saved in the `travel_plans/` directory. Each exported PDF includes:
 
-```text
-travel_plans/
-```
+* Transport timing guidance for buses, trains, and flights
+* Hotel suggestions
+* Structured Day-by-day Itinerary
+* Final response summary
+* Destination image
+* Timestamp and original user query
 
-Each PDF includes:
+---
 
-- Transport timing guidance for buses, trains, and flights
-- Hotel suggestions
-- Itinerary
-- Final response
-- Destination image
-- Timestamp and user query
+## ⚠️ Notes & Limitations
 
-## Notes
+* **Live APIs:** The app uses live internet APIs; service availability and data accuracy depend on your API keys and network access.
+* **Graceful Degradation:** Some features will gracefully fall back when certain services or keys are unavailable.
+* **Transport Logic:** The transport agent focuses specifically on route timing and mode comparison (bus/train) instead of relying solely on flight-only data.
 
-- The app uses live APIs, so service availability depends on your API keys and network access.
-- Some features gracefully fall back when services are unavailable.
-- If PostgreSQL is not configured, the app still works using an in-memory checkpointer.
-- The transport agent focuses on route timing and mode comparison instead of flight-only data.
+---
 
-## Common Troubleshooting
+## 🔧 Common Troubleshooting
 
-### Streamlit not found
+**Streamlit not found:**
 
-```powershell
+```bash
 pip install streamlit
+
 ```
 
-### Missing environment variables
+**Missing environment variables:**
+Confirm your `.env` file exists in the exact project root and contains valid, active API keys.
 
-Confirm your `.env` file exists in the project root and contains valid keys.
+**No transport or hotel data returned:**
+Check that:
 
-### No transport or hotel data returned
+* Your API keys have remaining credits/are valid.
+* Your internet connection is active.
+* The external API services (Groq/Tavily) are currently responding.
 
-Check:
+**PDF export issue (ModuleNotFoundError):**
 
-- your API keys are valid
-- your internet connection is active
-- the API service is responding
-
-### PDF export issue
-
-```powershell
+```bash
 pip install reportlab
+
 ```
 
-## License
+---
 
-This project is for local development and travel-planning experimentation.
+## 📜 License
+
+This project is licensed under the MIT License and is intended for local development and travel-planning experimentation.
+
+```
+
+```
